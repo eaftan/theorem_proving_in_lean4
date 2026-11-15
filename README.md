@@ -11,9 +11,10 @@ the additions here are the PDF converter, print stylesheet, and printing
 instructions. Read the [online edition](https://lean-lang.org/theorem_proving_in_lean4/)
 for interactive examples and hover information.
 
-**[Download the printable PDF](https://raw.githubusercontent.com/eaftan/theorem_proving_in_lean4/master/print/Theorem-Proving-in-Lean-4.pdf)**
+**[Download the printable PDF](https://eaftan.github.io/theorem_proving_in_lean4/Theorem-Proving-in-Lean-4.pdf)**
 (US Letter). The PDF is checked into this repository, so you can download it
-without installing anything.
+without installing anything. A [repository copy](print/Theorem-Proving-in-Lean-4.pdf)
+is also available.
 
 ## Generate a printable PDF
 
@@ -157,6 +158,24 @@ git commit -m "Update printable book"
 Use an artifact from the same source inputs you are committing. CI does not
 commit generated files automatically. Review the PDF after updating, especially
 after changes to Verso's HTML structure.
+
+### Publish the PDF with GitHub Pages
+
+The **Publish PDF** workflow serves the checked-in edition at
+<https://eaftan.github.io/theorem_proving_in_lean4/Theorem-Proving-in-Lean-4.pdf>.
+The project root URL opens the PDF as well. The build manifest and license
+notices are published alongside it.
+
+The workflow runs after relevant changes are pushed to `master`, or manually
+from GitHub Actions. It verifies the PDF's freshness and integrity before
+publishing, using Python's standard library. It does not rebuild Lean. A stale
+PDF fails publication, leaving the previously published edition available.
+After syncing upstream, update and commit the PDF and manifest to publish the
+new edition.
+
+Pages is configured to deploy using **GitHub Actions**. The workflow is scoped
+to this fork, and uses the `github-pages` environment. Other forks can adapt
+the repository guard and URLs before enabling Pages in their settings.
 
 ### PDF redistribution and licensing
 
