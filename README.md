@@ -5,8 +5,101 @@ This repository contains the source code of the book _Theorem Proving
 in Lean 4_ by Jeremy Avigad, Leonardo de Moura, Soonho Kong, and
 Sebastian Ullrich, with contributions from the Lean Community.
 
-To build the book, change to the `book` directory and run `lake exe tpil`.
-After this, `book/_out/html-multi` contains a multi-page Web
-version of the book. From the `book` directory, run `lake exe verso-serve`
-to view it.
+**This fork adds a way to generate a printable PDF of the book.** The book comes
+from [leanprover/theorem_proving_in_lean4](https://github.com/leanprover/theorem_proving_in_lean4);
+the additions here are the PDF converter, print stylesheet, and printing
+instructions. Read the [online edition](https://lean-lang.org/theorem_proving_in_lean4/)
+for interactive examples and hover information.
+
+## Generate a printable PDF
+
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) and
+[WeasyPrint's system dependencies](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation).
+The converter requires Python 3.12 or newer; `uv` manages Python and the pinned
+Python dependencies automatically. Install DejaVu fonts as well for mathematical
+symbols not covered by the fonts bundled with the book.
+
+For example, on Ubuntu/Debian, install the system libraries and fallback fonts:
+
+```sh
+sudo apt install libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core
+```
+
+From the repository root, run:
+
+```sh
+uv run scripts/print-book.py --published
+```
+
+This downloads upstream's published HTML, without needing a Lean installation,
+and creates **`print/Theorem-Proving-in-Lean-4.pdf`**. It also saves the combined
+HTML alongside the PDF. Generated files are ignored by Git.
+
+The PDF includes all chapters, a table of contents with page numbers, PDF
+bookmarks, internal links, running chapter headers, code examples, displayed
+output, and explicit proof states. Website navigation, copy buttons, hidden
+example setup, and hover-only information are omitted.
+
+The download is checked against the contents of this checkout's `book/` and
+`examples/` directories. Commits changing only the print tools or README are
+fine; changes to the book sources require a local HTML build. Upstream's
+published HTML must correspond to those sources, so a newer upstream publication
+may also require updating the fork or building locally. The downloaded build's
+source and HTML commit IDs are recorded in `book/_out/print/source.json`.
+
+US Letter is the default. For A4 paper or a different output filename:
+
+```sh
+uv run scripts/print-book.py --published --paper A4 --output print/book-a4.pdf
+```
+
+For a physical copy, print in black and white, double-sided, one PDF page per
+side, at actual size (100%), and flip on the long edge. Coil/spiral binding lets
+the book lie flat beside a computer. The margins leave room for binding.
+
+## Build from local book sources
+
+With [Lean installed](https://lean-lang.org/install/), build the examples and
+HTML using the toolchain versions specified in the repository:
+
+```sh
+(cd examples && lake build && lake build subverso-extract-mod)
+(cd book && lake exe tpil)
+uv run scripts/print-book.py
+```
+
+The default HTML input is `book/_out/html-multi`. To use another existing build:
+
+```sh
+uv run scripts/print-book.py --html-dir path/to/html-multi
+```
+
+From the `book` directory, run `lake exe verso-serve` to view the HTML book.
+
+## Implementation and maintenance
+
+[`scripts/print-book.py`](scripts/print-book.py) combines Verso's chapter HTML
+using Beautiful Soup, then renders it with WeasyPrint and
+[`scripts/print-book.css`](scripts/print-book.css). Edit the stylesheet to adjust
+fonts, spacing, margins, and page layout. The converter preserves the book's
+prose and examples; the print layout is maintained in this fork.
+
+Run the downloader regression tests with:
+
+```sh
+uv run --python 3.12 --with beautifulsoup4==4.15.0 --with weasyprint==70.0 \
+  python -m unittest discover -s scripts -p test_print_book.py
+```
+
+The upstream authorship and [Apache 2.0 license](LICENSE) are retained. To bring
+in future book updates from a clone of this fork:
+
+```sh
+git remote add upstream https://github.com/leanprover/theorem_proving_in_lean4.git
+git fetch upstream
+git merge upstream/master
+```
+
+Add the `upstream` remote only once. After updating, regenerate and check the PDF,
+especially after changes to Verso's HTML structure.
 

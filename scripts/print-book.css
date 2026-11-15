@@ -1,0 +1,73 @@
+@font-face {
+  font-family: BookSerif;
+  src: url('FONT_ROOT/source-serif/TTF/SourceSerif4-Regular.ttf');
+}
+@font-face {
+  font-family: BookSerif;
+  src: url('FONT_ROOT/source-serif/TTF/SourceSerif4-Bold.ttf');
+  font-weight: bold;
+}
+@font-face {
+  font-family: BookSerif;
+  src: url('FONT_ROOT/source-serif/TTF/SourceSerif4-It.ttf');
+  font-style: italic;
+}
+@font-face {
+  font-family: BookMono;
+  src: url('FONT_ROOT/source-code-pro/TTF/SourceCodePro-Regular.ttf');
+}
+@page {
+  size: PAPER_SIZE;
+  margin: 0.72in 0.8in 0.72in 0.8in;
+  @top-left {
+    content: string(chapter);
+    font: 8pt BookSerif;
+    color: #555;
+  }
+  @bottom-center {
+    content: counter(page);
+    font: 9pt BookSerif;
+  }
+}
+@page :first {
+  @top-left { content: none; }
+  @bottom-center { content: none; }
+}
+body {
+  font: 10.5pt / 1.35 BookSerif, 'DejaVu Serif', serif;
+  color: #111;
+}
+p { margin: 0.65em 0; orphans: 3; widows: 3; }
+a { color: inherit; text-decoration: none; overflow-wrap: anywhere; }
+h1, h2, h3 { line-height: 1.2; break-after: avoid; }
+h1 { font-size: 23pt; margin: 0 0 0.8em; bookmark-level: 1; }
+h2 { font-size: 15pt; margin: 1.3em 0 0.6em; bookmark-level: 2; }
+h3 { font-size: 12pt; margin: 1em 0 0.5em; bookmark-level: 3; }
+.chapter { break-before: page; }
+.chapter > h1 { string-set: chapter content(); }
+.titlepage { padding-top: 1.1in; break-after: page; }
+.titlepage h1 { font-size: 34pt; max-width: 5.8in; margin-bottom: 0.75in; bookmark-level: none; }
+.author { display: block; font-size: 15pt; margin: 0.15em 0; }
+.authors .note { font-size: 11pt; margin-top: 1em; }
+.titlepage > p { margin-top: 0.5in; }
+.print-note { font-size: 9pt; color: #555; white-space: pre-line; }
+.print-toc { break-after: page; }
+.print-toc h1 { bookmark-level: none; }
+.print-toc a { display: block; line-height: 1.45; }
+.print-toc a::after { content: leader('.') target-counter(attr(href), page); }
+.toc-chapter { font-weight: bold; margin-top: 0.55em; break-after: avoid; }
+.toc-section { margin-left: 0.2in; font-size: 10pt; }
+code, pre, kbd { font-family: BookMono, 'DejaVu Sans Mono', monospace; font-variant-ligatures: none; }
+code { font-size: 0.85em; white-space: pre-wrap; overflow-wrap: anywhere; }
+pre { font-size: 8.5pt; line-height: 1.3; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2; }
+.example { margin: 0.8em 0 0.8em 0.12in; }
+.source-code { margin: 0; }
+.output { margin: 0.25em 0 0.35em 0.08in; padding: 0.1em 0.5em; border-left: 1.5pt solid #999; color: #333; }
+.proof-state { margin: 0.8em 0 0.8em 0.2in; }
+pre { orphans: 3; widows: 3; }
+ul, ol { padding-left: 1.5em; }
+li { margin: 0.35em 0; }
+table { border-collapse: collapse; margin: 1em 0; font-size: 10pt; max-width: 100%; }
+td, th { padding: 0.3em 0.7em; text-align: left; vertical-align: top; border-bottom: 0.5pt solid #ccc; }
+tr { break-inside: avoid; }
+img, svg { max-width: 100%; }

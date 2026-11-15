@@ -13,7 +13,8 @@ permissions: {}
 jobs:
   deploy:
     name: Deploy to Netlify
-    if: github.event.workflow_run.conclusion == 'success'
+    # The Netlify site and publishing credentials belong to the upstream repo.
+    if: github.repository == 'leanprover/theorem_proving_in_lean4' && github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     # Publications serialize against each other, previews against their own ref.
     concurrency:
