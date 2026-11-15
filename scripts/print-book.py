@@ -26,6 +26,7 @@ import print_manifest
 
 ROOT = Path(__file__).resolve().parent.parent
 REPO = "leanprover/theorem_proving_in_lean4"
+PRINT_SOURCE_URL = "https://github.com/eaftan/theorem_proving_in_lean4"
 
 
 def git(*args):
@@ -134,11 +135,13 @@ def assemble(site, paper, input_fingerprint):
     title_heading.append(book.new_tag("br"))
     title_heading.append("in Lean 4")
     note = book.new_tag("p", attrs={"class": "print-note"})
-    note.string = (f"Print edition · {paper} · inputs {input_fingerprint[:12]}\n"
-                   "Print layout prepared by Eddie Aftandilian.\n"
-                   "Formatting changed; website navigation and hover-only information omitted.\n"
-                   "The online edition provides interactive examples and hover information.\n"
-                   "https://lean-lang.org/theorem_proving_in_lean4/")
+    note.append(f"Print edition · {paper} · inputs {input_fingerprint[:12]}\nSource: ")
+    source_link = book.new_tag("a", href=PRINT_SOURCE_URL)
+    source_link.string = PRINT_SOURCE_URL
+    note.append(source_link)
+    note.append("\nFormatting changed; website navigation and hover-only information omitted.\n"
+                "The online edition provides interactive examples and hover information.\n"
+                "https://lean-lang.org/theorem_proving_in_lean4/")
     title.append(note)
     book.body.append(title)
     toc = book.new_tag("div", attrs={"class": "print-toc"})
@@ -185,12 +188,15 @@ def assemble(site, paper, input_fingerprint):
     legal_title.string = "Licenses and print edition"
     legal.append(legal_title)
     notice = book.new_tag("p")
-    notice.string = (
+    notice.append(
         "Theorem Proving in Lean 4 is by Jeremy Avigad, Leonardo de Moura, Soonho Kong, "
         "and Sebastian Ullrich, with contributions from the Lean Community. "
-        "This print edition was prepared by Eddie Aftandilian in the fork "
-        "https://github.com/eaftan/theorem_proving_in_lean4. "
-        "The layout was adapted for paper and website navigation and hover-only material "
+        "Source for this print edition, including the generator and layout, is available at ")
+    source_link = book.new_tag("a", href=PRINT_SOURCE_URL)
+    source_link.string = PRINT_SOURCE_URL
+    notice.append(source_link)
+    notice.append(
+        ". The layout was adapted for paper and website navigation and hover-only material "
         "were omitted. The book is distributed under the Apache License, Version 2.0, "
         "reproduced below. Embedded fonts retain their respective licenses.")
     legal.append(notice)
