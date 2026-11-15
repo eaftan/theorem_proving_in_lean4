@@ -1,4 +1,4 @@
 *.pdf
-!Theorem-Proving-in-Lean-4.pdf
+*.json
 *.html
 !index.html

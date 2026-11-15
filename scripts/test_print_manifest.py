@@ -46,6 +46,7 @@ class ManifestTests(unittest.TestCase):
     def test_accepts_pdf_and_manifest_generated_from_current_inputs(self):
         result = print_manifest.check(self.pdf, root=self.root)
         self.assertEqual(result["pdf_sha256"], print_manifest.sha256(self.pdf.read_bytes()))
+        self.assertEqual(result["source_commit"], self.git("rev-parse", "HEAD"))
 
     def test_unrelated_commit_does_not_require_pdf_regeneration(self):
         self.put("README.md", "How to download the PDF\n")
@@ -102,20 +103,6 @@ class ManifestTests(unittest.TestCase):
         self.put("book/chapter.lean", "edited during rendering")
         with self.assertRaisesRegex(ValueError, "changed during generation"):
             self.record(self.pdf)
-
-    def test_rebuilt_book_with_different_content_is_rejected(self):
-        rebuilt = self.root / "rebuilt.pdf"
-        rebuilt.write_bytes(b"another rendering")
-        self.record(rebuilt, print_manifest.sha256(b"different book content"))
-        with self.assertRaisesRegex(ValueError, "content differs"):
-            print_manifest.compare(self.pdf, rebuilt, root=self.root)
-
-    def test_same_content_with_different_pdf_binary_is_accepted(self):
-        rebuilt = self.root / "rebuilt.pdf"
-        rebuilt.write_bytes(b"same content, different font subset encoding")
-        self.record(rebuilt)
-        print_manifest.compare(self.pdf, rebuilt, root=self.root)
-
 
 if __name__ == "__main__":
     unittest.main()

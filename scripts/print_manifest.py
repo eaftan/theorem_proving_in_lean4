@@ -1,7 +1,7 @@
-"""Record PDF build inputs and check that the distributed PDF is current.
+"""Record PDF build inputs and verify generated PDF artifacts.
 
 The checker uses only Python's standard library; it does not need Lean or a PDF
-renderer. The full book CI also compares a fresh build's document content.
+renderer. CI verifies the generated artifact before publishing it to Pages.
 """
 
 import argparse
@@ -46,6 +46,8 @@ def write(pdf, paper, source_inputs, content_hash, pages, root=ROOT):
     manifest = {
         "schema": 1,
         "paper": paper,
+        "source_commit": subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=root, text=True).strip(),
         "input_sha256": fingerprint(source_inputs, paper),
         "inputs": source_inputs,
         "content_sha256": content_hash,
@@ -75,27 +77,15 @@ def check(pdf, paper="Letter", root=ROOT):
     return manifest
 
 
-def compare(pdf, fresh_pdf, paper="Letter", root=ROOT):
-    manifest = check(pdf, paper, root)
-    fresh = check(fresh_pdf, paper, root)
-    if manifest["content_sha256"] != fresh["content_sha256"]:
-        raise ValueError("PDF content differs from the freshly built book; regenerate it.")
-    return manifest
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--pdf", type=Path, default=DEFAULT_PDF)
     parser.add_argument("--paper", choices=("Letter", "A4"), default="Letter")
-    parser.add_argument("--against", type=Path, help="compare with a fresh PDF build's content manifest")
     args = parser.parse_args()
     try:
-        if args.against:
-            manifest = compare(args.pdf, args.against, args.paper)
-        else:
-            manifest = check(args.pdf, args.paper)
+        manifest = check(args.pdf, args.paper)
     except (OSError, ValueError, KeyError, TypeError) as error:
-        parser.exit(1, f"{error}\nRegenerate and commit the PDF together with its .json manifest.\n")
+        parser.exit(1, f"{error}\nRegenerate the PDF and its .json manifest together.\n")
     print(f"PDF is current: {args.pdf} (inputs {manifest['input_sha256'][:12]})")
 
 

@@ -16,14 +16,14 @@ on:
   workflow_dispatch:
 
 # This workflow builds pull request code, including code from forks, so it holds
-# no secrets and only reads. The book HTML leaves here as an artifact, and
-# deploy.yml picks it up and publishes it.
+# no secrets and only reads during the build. HTML and PDF leave as artifacts;
+# a separate job publishes PDFs only from this fork's master branch.
 permissions:
   contents: read
 
 jobs:
-  print-freshness:
-    name: Check checked-in PDF
+  print-tests:
+    name: Test PDF provenance checks
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -31,15 +31,15 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Test PDF freshness checks
+      - name: Test PDF provenance and file integrity
         run: python3 -m unittest discover -s scripts -p test_print_manifest.py -v
-
-      - name: Verify PDF inputs and file integrity
-        run: python3 scripts/print_manifest.py
 
   build:
     name: Build book
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
@@ -160,8 +160,11 @@ jobs:
           uv run --locked scripts/print-book.py
           --output book/_out/print-ci/Theorem-Proving-in-Lean-4.pdf
 
-      # Upload before the comparison so a stale checked-in PDF can be updated
-      # from this artifact, without installing the rendering tools locally.
+      - name: Verify generated PDF inputs and file integrity
+        run: >-
+          python3 scripts/print_manifest.py
+          --pdf book/_out/print-ci/Theorem-Proving-in-Lean-4.pdf
+
       - name: Upload printable PDF and manifest
         uses: actions/upload-artifact@v7.0.1
         with:
@@ -172,7 +175,53 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
-      - name: Compare checked-in PDF with freshly built book
-        run: >-
-          python3 scripts/print_manifest.py
-          --against book/_out/print-ci/Theorem-Proving-in-Lean-4.pdf
+      - name: Configure GitHub Pages
+        if: github.repository == 'eaftan/theorem_proving_in_lean4' && github.ref == 'refs/heads/master'
+        uses: actions/configure-pages@v5.0.0
+
+      - name: Stage generated PDF and notices
+        if: github.repository == 'eaftan/theorem_proving_in_lean4' && github.ref == 'refs/heads/master'
+        run: |
+          mkdir -p book/_out/pages
+          cp book/_out/print-ci/Theorem-Proving-in-Lean-4.pdf book/_out/print-ci/Theorem-Proving-in-Lean-4.json print/index.html LICENSE print/DejaVu-LICENSE.txt book/_out/pages/
+          touch book/_out/pages/.nojekyll
+
+      - name: Upload Pages artifact
+        if: github.repository == 'eaftan/theorem_proving_in_lean4' && github.ref == 'refs/heads/master'
+        uses: actions/upload-pages-artifact@v4.0.0
+        with:
+          path: book/_out/pages
+
+  publish-pdf:
+    name: Publish generated PDF to GitHub Pages
+    needs: [build, print-tests]
+    if: github.repository == 'eaftan/theorem_proving_in_lean4' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check that this build is still the latest master
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          latest_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/master" --jq .object.sha)
+          if [ "$latest_sha" = "$GITHUB_SHA" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "A newer master commit exists; skipping this older build."
+          fi
+
+      - name: Deploy generated PDF to GitHub Pages
+        id: deployment
+        if: steps.current.outputs.publish == 'true'
+        uses: actions/deploy-pages@v4.0.5

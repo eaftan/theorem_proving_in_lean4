@@ -221,11 +221,10 @@ def assemble(site, paper, input_fingerprint):
 
 
 def content_fingerprint(html):
-    """Compare rendered content without machine-specific font URLs or HTML IDs.
+    """Record document content without machine-specific font URLs or HTML IDs.
 
-    Preserve code whitespace, and normalize prose whitespace. This lets CI check
-    a fresh local HTML build against a PDF generated from matching upstream HTML.
-    PDF binary output can differ across Pango and FreeType versions.
+    Preserve code whitespace and normalize prose whitespace so the manifest can
+    identify document content independently of font encoding and PDF layout.
     """
     body = BeautifulSoup(html, "html.parser").body
     content = []

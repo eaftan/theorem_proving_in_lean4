@@ -12,9 +12,9 @@ instructions. Read the [online edition](https://lean-lang.org/theorem_proving_in
 for interactive examples and hover information.
 
 **[Download the printable PDF](https://eaftan.github.io/theorem_proving_in_lean4/Theorem-Proving-in-Lean-4.pdf)**
-(US Letter). The PDF is checked into this repository, so you can download it
-without installing anything. A [repository copy](print/Theorem-Proving-in-Lean-4.pdf)
-is also available.
+(US Letter). CI generates the PDF and publishes it to GitHub Pages, so you can
+download it without installing anything. The download serves the latest
+successfully published build of `master`.
 
 ## Generate a printable PDF
 
@@ -40,8 +40,8 @@ This downloads upstream's published HTML, without needing a Lean installation,
 and creates **`print/Theorem-Proving-in-Lean-4.pdf`**. It also saves the combined
 HTML alongside the PDF and writes `print/Theorem-Proving-in-Lean-4.json`, a
 manifest recording the build inputs, document content, and PDF file hash.
-The Letter PDF and its manifest are checked into Git; intermediate HTML and
-other PDF filenames are ignored.
+PDFs, manifests, and intermediate HTML are generated outputs and are ignored
+by Git. The source code, print layout, and license notices stay in the repository.
 
 The PDF includes all chapters, a table of contents with page numbers, PDF
 bookmarks, internal links, running chapter headers, code examples, displayed
@@ -94,7 +94,7 @@ using Beautiful Soup, then renders it with WeasyPrint and
 fonts, spacing, margins, and page layout. The converter preserves the book's
 prose and examples; the print layout is maintained in this fork.
 
-Run the freshness and converter regression tests with:
+Run the artifact-provenance and converter regression tests with:
 
 ```sh
 python3 -m unittest discover -s scripts -p test_print_manifest.py
@@ -113,69 +113,51 @@ git merge upstream/master
 
 Add the `upstream` remote only once.
 
-### Keep the checked-in PDF current
+### CI builds and GitHub Pages publication
 
-CI runs on pushes to `master` and pull requests. It has two checks:
+CI builds the examples and book HTML from the fork's current sources, tests the
+converter, then generates a fresh Letter PDF from that HTML. It verifies the
+PDF's source-input fingerprint and file integrity, and uploads a
+**`printable-pdf`** artifact containing the PDF and its JSON build manifest.
+There is no checked-in PDF to regenerate or compare against.
 
-1. **Check checked-in PDF** verifies the manifest against the current book,
-   examples, generator, stylesheet, locked Python dependencies, and license
-   inputs, then verifies the PDF's hash. This needs only Python's standard
-   library. Run it locally with `python3 scripts/print_manifest.py`.
-2. **Build book** builds the fork's current sources with Lean, renders a fresh
-   PDF from that local HTML, and compares its document-content fingerprint
-   with the checked-in edition. This catches stale local HTML and changes to
-   Verso's output as well as exercising PDF generation after upstream merges.
+After the build and provenance tests pass, builds of this fork's `master`
+branch publish the generated PDF to GitHub Pages automatically. Pull requests
+and release branches produce artifacts without publishing. Before deploying,
+CI checks that the build still represents the latest `master` commit, so an
+older in-flight build cannot overwrite a newer edition. If a build fails, the
+previously published edition remains available.
 
-The comparison preserves code whitespace and compares prose, headings, tables,
-and links. It uses content rather than PDF byte equality because different
-Pango/FreeType versions can encode or lay out the same document differently.
-The input fingerprint is printed on the title page. It describes relevant file
-contents, rather than a Git commit ID, so committing the PDF or updating the
-README does not immediately invalidate it.
+The stable download is:
 
-After syncing upstream, regenerate the PDF and commit both files:
+<https://eaftan.github.io/theorem_proving_in_lean4/Theorem-Proving-in-Lean-4.pdf>
+
+The project root URL opens the PDF too. The JSON build manifest and license
+notices are published alongside it. The manifest records the source commit,
+input and document-content fingerprints, and PDF hash; the input fingerprint
+also appears on the title page. Generated HTML, example files, and Verso's
+cross-reference cache are excluded from the source-input fingerprint.
+
+After syncing upstream, push the merge to `master`; CI rebuilds and publishes
+the new edition. To request a fresh build manually, run the **CI** workflow
+from GitHub Actions, or use:
 
 ```sh
-uv run --locked scripts/print-book.py --published
-python3 scripts/print_manifest.py
-git add print/Theorem-Proving-in-Lean-4.pdf print/Theorem-Proving-in-Lean-4.json
-git commit -m "Update printable book"
+gh workflow run ci.yml --repo eaftan/theorem_proving_in_lean4 --ref master
 ```
 
-If upstream's published HTML no longer matches, build locally as described
-above, or use CI's **`printable-pdf`** artifact. CI uploads the freshly generated
-PDF and manifest before comparing them with the checked-in version, so the
-artifact is available even when the comparison reports a stale PDF. Download
-it from the CI run on GitHub, or use the GitHub CLI with that run's ID:
+You can also download a CI artifact for local review without installing Lean
+or the renderer. Use a run whose source inputs match your checkout:
 
 ```sh
 gh run download RUN_ID --repo eaftan/theorem_proving_in_lean4 --name printable-pdf --dir print
 python3 scripts/print_manifest.py
-git add print/Theorem-Proving-in-Lean-4.pdf print/Theorem-Proving-in-Lean-4.json
-git commit -m "Update printable book"
 ```
 
-Use an artifact from the same source inputs you are committing. CI does not
-commit generated files automatically. Review the PDF after updating, especially
-after changes to Verso's HTML structure.
-
-### Publish the PDF with GitHub Pages
-
-The **Publish PDF** workflow serves the checked-in edition at
-<https://eaftan.github.io/theorem_proving_in_lean4/Theorem-Proving-in-Lean-4.pdf>.
-The project root URL opens the PDF as well. The build manifest and license
-notices are published alongside it.
-
-The workflow runs after relevant changes are pushed to `master`, or manually
-from GitHub Actions. It verifies the PDF's freshness and integrity before
-publishing, using Python's standard library. It does not rebuild Lean. A stale
-PDF fails publication, leaving the previously published edition available.
-After syncing upstream, update and commit the PDF and manifest to publish the
-new edition.
-
-Pages is configured to deploy using **GitHub Actions**. The workflow is scoped
-to this fork, and uses the `github-pages` environment. Other forks can adapt
-the repository guard and URLs before enabling Pages in their settings.
+Pages is configured to deploy using **GitHub Actions** and the `github-pages`
+environment. Publication is scoped to this fork in `.github/workflows/ci.yml`;
+other forks can adapt the repository guard and URLs before enabling Pages in
+their settings.
 
 ### PDF redistribution and licensing
 
