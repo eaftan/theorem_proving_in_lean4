@@ -191,3 +191,21 @@ License; their license texts are already present under `book/static/fonts/` and
 are reproduced in the PDF. DejaVu fallback-font notices are preserved in
 [`print/DejaVu-LICENSE.txt`](print/DejaVu-LICENSE.txt) and in the appendix.
 
+### Workflow dependencies
+
+GitHub Actions use version tags, with direct and transitive action dependencies
+locked in [`.github/workflows/actions.lock`](.github/workflows/actions.lock).
+Generate this file with GitHub's CLI extension rather than editing it by hand:
+
+```sh
+gh extension install github/gh-actions-lock --pin v0.4.1
+gh actions-lock
+gh actions-lock --verify
+```
+
+Run the lock command after adding or changing action references, and commit the
+workflow and lockfile changes together. The Lint workflow verifies coverage and
+upstream pins. The existing Dependabot configuration keeps action versions and
+their lockfile entries up to date. Docker images are outside the lockfile's
+scope, so the actionlint image retains its digest pin.
+
