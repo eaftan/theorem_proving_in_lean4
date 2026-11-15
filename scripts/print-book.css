@@ -45,6 +45,9 @@ h2 { font-size: 15pt; margin: 1.3em 0 0.6em; bookmark-level: 2; }
 h3 { font-size: 12pt; margin: 1em 0 0.5em; bookmark-level: 3; }
 .chapter { break-before: page; }
 .chapter > h1 { string-set: chapter content(); }
+.license-appendix { break-before: page; }
+.license-appendix > h1 { string-set: chapter content(); }
+.legal-text { font-size: 7.5pt; line-height: 1.2; }
 .titlepage { padding-top: 1.1in; break-after: page; }
 .titlepage h1 { font-size: 34pt; max-width: 5.8in; margin-bottom: 0.75in; bookmark-level: none; }
 .author { display: block; font-size: 15pt; margin: 0.15em 0; }

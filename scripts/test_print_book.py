@@ -118,5 +118,20 @@ class PublishedHtmlTests(unittest.TestCase):
                 self.assertFalse((self.root / "book/_out/print/escape").exists())
 
 
+class ContentFingerprintTests(unittest.TestCase):
+    def test_ignores_machine_paths_and_unused_hover_metadata(self):
+        first = '<body><style>url(file:///machine1/font.ttf)</style><p><span data-verso-hover="1">Book</span> text</p></body>'
+        second = '<body><style>url(file:///machine2/font.ttf)</style><p><span data-verso-hover="999">Book</span>\ntext</p></body>'
+        self.assertEqual(print_book.content_fingerprint(first), print_book.content_fingerprint(second))
+
+    def test_detects_prose_code_indentation_and_link_changes(self):
+        first = '<body><p>Book text</p><pre>  exact h\n</pre><a href="#one">section</a></body>'
+        for second in (first.replace("Book text", "New text"),
+                       first.replace("  exact", "    exact"), first.replace("#one", "#two")):
+            with self.subTest(html=second):
+                self.assertNotEqual(print_book.content_fingerprint(first),
+                                    print_book.content_fingerprint(second))
+
+
 if __name__ == "__main__":
     unittest.main()

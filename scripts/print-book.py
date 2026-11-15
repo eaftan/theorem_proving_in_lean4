@@ -21,6 +21,8 @@ from urllib.request import Request, urlopen
 from bs4 import BeautifulSoup
 from weasyprint import HTML
 
+import print_manifest
+
 
 ROOT = Path(__file__).resolve().parent.parent
 REPO = "leanprover/theorem_proving_in_lean4"
@@ -115,7 +117,7 @@ def clean(section):
     return section
 
 
-def assemble(site, paper, revision):
+def assemble(site, paper, input_fingerprint):
     root = parse(site / "index.html")
     links = root.select("main .section-toc a")
     if not links:
@@ -132,7 +134,9 @@ def assemble(site, paper, revision):
     title_heading.append(book.new_tag("br"))
     title_heading.append("in Lean 4")
     note = book.new_tag("p", attrs={"class": "print-note"})
-    note.string = (f"Print edition · {paper} · source {revision}\n"
+    note.string = (f"Print edition · {paper} · inputs {input_fingerprint[:12]}\n"
+                   "Print layout prepared by Eddie Aftandilian.\n"
+                   "Formatting changed; website navigation and hover-only information omitted.\n"
                    "The online edition provides interactive examples and hover information.\n"
                    "https://lean-lang.org/theorem_proving_in_lean4/")
     title.append(note)
@@ -176,12 +180,64 @@ def assemble(site, paper, revision):
                 link["href"] = "#" + targets[key]
             else:
                 link["href"] = "https://lean-lang.org/theorem_proving_in_lean4/" + link["href"]
+    legal = book.new_tag("section", attrs={"class": "license-appendix", "id": "licenses"})
+    legal_title = book.new_tag("h1")
+    legal_title.string = "Licenses and print edition"
+    legal.append(legal_title)
+    notice = book.new_tag("p")
+    notice.string = (
+        "Theorem Proving in Lean 4 is by Jeremy Avigad, Leonardo de Moura, Soonho Kong, "
+        "and Sebastian Ullrich, with contributions from the Lean Community. "
+        "This print edition was prepared by Eddie Aftandilian in the fork "
+        "https://github.com/eaftan/theorem_proving_in_lean4. "
+        "The layout was adapted for paper and website navigation and hover-only material "
+        "were omitted. The book is distributed under the Apache License, Version 2.0, "
+        "reproduced below. Embedded fonts retain their respective licenses.")
+    legal.append(notice)
+    licenses = [("Apache License, Version 2.0", ROOT / "LICENSE")]
+    licenses.extend((path.name, path) for path in sorted(ROOT.glob("NOTICE*")) if path.is_file())
+    licenses.extend([
+        ("Source Serif 4 font", ROOT / "book/static/fonts/source-serif/LICENSE.md"),
+        ("Source Code Pro font", ROOT / "book/static/fonts/source-code-pro/LICENSE.md"),
+        ("DejaVu fallback fonts", ROOT / "print/DejaVu-LICENSE.txt"),
+    ])
+    for title_text, path in licenses:
+        heading = book.new_tag("h2")
+        heading.string = title_text
+        legal.append(heading)
+        text = book.new_tag("pre", attrs={"class": "legal-text"})
+        text.string = path.read_text(encoding="utf-8")
+        legal.append(text)
+    book.body.append(legal)
+    entry = book.new_tag("a", href="#licenses", attrs={"class": "toc-chapter"})
+    entry.string = "Licenses and print edition"
+    toc.append(entry)
     style = book.new_tag("style")
     css = (ROOT / "scripts" / "print-book.css").read_text(encoding="utf-8")
     style.string = css.replace("PAPER_SIZE", paper).replace(
         "FONT_ROOT", (ROOT / "book/static/fonts").as_uri())
     book.head.append(style)
     return str(book), len(chapters)
+
+
+def content_fingerprint(html):
+    """Compare rendered content without machine-specific font URLs or HTML IDs.
+
+    Preserve code whitespace, and normalize prose whitespace. This lets CI check
+    a fresh local HTML build against a PDF generated from matching upstream HTML.
+    PDF binary output can differ across Pango and FreeType versions.
+    """
+    body = BeautifulSoup(html, "html.parser").body
+    content = []
+    for tag in body.find_all(["h1", "h2", "h3", "p", "pre", "li", "td", "th"]):
+        text = tag.get_text()
+        if tag.name != "pre":
+            text = " ".join(text.split())
+        content.append((tag.name, text))
+    content.extend(("a", " ".join(tag.get_text().split()), tag["href"])
+                   for tag in body.select("a[href]"))
+    content.extend(("img", tag.get("src"), tag.get("alt")) for tag in body.select("img"))
+    return print_manifest.sha256(json.dumps(content, ensure_ascii=False).encode())
 
 
 def main():
@@ -196,20 +252,22 @@ def main():
         parser.error("--output must have a .pdf extension")
     if args.published:
         try:
-            site, revision = published_html(ROOT / "book/_out/print/site")
+            site, _ = published_html(ROOT / "book/_out/print/site")
         except (URLError, OSError, tarfile.TarError, ValueError, KeyError) as error:
             parser.exit(1, f"Cannot download published HTML: {error}\n")
     else:
         site = (args.html_dir or ROOT / "book/_out/html-multi").resolve()
-        revision = git("rev-parse", "HEAD")
     if not (site / "index.html").exists():
         parser.error("HTML not found; build the book first, or use --published")
-    html, count = assemble(site, args.paper, revision[:7])
+    source_inputs = print_manifest.inputs()
+    html, count = assemble(site, args.paper, print_manifest.fingerprint(source_inputs, args.paper))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     html_path = args.output.with_suffix(".html")
     html_path.write_text(html, encoding="utf-8")
     document = HTML(string=html, base_url=str(site)).render()
     document.write_pdf(args.output)
+    print_manifest.write(args.output, args.paper, source_inputs,
+                         content_fingerprint(html), len(document.pages))
     print(f"Created {args.output}: {count} chapters, {len(document.pages)} {args.paper} pages")
 
 

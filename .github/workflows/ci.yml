@@ -22,6 +22,21 @@ permissions:
   contents: read
 
 jobs:
+  print-freshness:
+    name: Check checked-in PDF
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Test PDF freshness checks
+        run: python3 -m unittest discover -s scripts -p test_print_manifest.py -v
+
+      - name: Verify PDF inputs and file integrity
+        run: python3 scripts/print_manifest.py
+
   build:
     name: Build book
     runs-on: ubuntu-latest
@@ -120,3 +135,43 @@ jobs:
           path: book/_out/html-multi
           retention-days: 7
           if-no-files-found: error
+
+      - name: Set up PDF build tools
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          version: "0.11.26"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: scripts/print-book.py.lock
+
+      - name: Install PDF system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core
+
+      - name: Test PDF converter
+        run: >-
+          uv run --python 3.12 --with beautifulsoup4==4.15.0 --with weasyprint==70.0
+          python -m unittest discover -s scripts -p test_print_book.py -v
+
+      - name: Generate PDF from this checkout's HTML
+        run: >-
+          uv run --locked scripts/print-book.py
+          --output book/_out/print-ci/Theorem-Proving-in-Lean-4.pdf
+
+      # Upload before the comparison so a stale checked-in PDF can be updated
+      # from this artifact, without installing the rendering tools locally.
+      - name: Upload printable PDF and manifest
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: printable-pdf
+          path: |
+            book/_out/print-ci/Theorem-Proving-in-Lean-4.pdf
+            book/_out/print-ci/Theorem-Proving-in-Lean-4.json
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Compare checked-in PDF with freshly built book
+        run: >-
+          python3 scripts/print_manifest.py
+          --against book/_out/print-ci/Theorem-Proving-in-Lean-4.pdf
