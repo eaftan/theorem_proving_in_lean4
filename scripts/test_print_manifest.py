@@ -20,7 +20,7 @@ class ManifestTests(unittest.TestCase):
                      "scripts/print-book.css", "scripts/print_manifest.py",
                      "print/DejaVu-LICENSE.txt"):
             self.put(path, "original\n")
-        self.put(".gitignore", "book/_out/\n")
+        self.put(".gitignore", "book/_out/\nbook/.verso/\n")
         self.git("add", ".")
         self.git("commit", "--quiet", "-m", "Book sources")
         self.pdf = self.root / "print/book.pdf"
@@ -77,6 +77,7 @@ class ManifestTests(unittest.TestCase):
 
     def test_ignores_generated_html_and_examples(self):
         self.put("book/_out/index.html", "generated HTML")
+        self.put("book/.verso/verso-xref-manifest.json", "generated cross-reference cache")
         self.put("examples/.gitignore", "Generated.lean\n")
         # Updating ignore rules is itself a book input change: record it first.
         self.source_inputs = print_manifest.inputs(self.root)
